@@ -16,74 +16,61 @@ interface SQLResultMapper<T> {
 }
 
 public class UserDao {
-    public void queryUpdate(String sql, String... params) throws SQLException {
-        Connection con = null;
-        PreparedStatement statement = null;
-
+    public void queryUpdate(String sql, String... params) {
         try {
-            con = ConnectionManager.getConnection();
-            statement = con.prepareStatement(sql);
+            Connection con = ConnectionManager.getConnection();
+            PreparedStatement statement = con.prepareStatement(sql);
             for(int i = 0; i < params.length; i++) {
                 statement.setString(i + 1, params[i]);
             }
             statement.executeUpdate();
-        } finally {
-            if (statement != null) {
-                statement.close();
-            }
-            if (con != null) {
-                con.close();
-            }
+            statement.close();
+            con.close();
+        } catch(SQLException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
-    public <T> List<T> queryGet(SQLResultMapper<T> mapper, String sql, String... params) throws SQLException {
-        Connection con = null;
-        PreparedStatement statement = null;
-        ResultSet rs = null;
-
+    public <T> List<T> queryGet(SQLResultMapper<T> mapper, String sql, String... params) {
         try {
-            con = ConnectionManager.getConnection();
-            statement = con.prepareStatement(sql);
+            Connection con = ConnectionManager.getConnection();
+            PreparedStatement statement = con.prepareStatement(sql);
             for(int i = 0; i < params.length; i++) {
                 statement.setString(i + 1, params[i]);
             }
-            rs = statement.executeQuery();
+            ResultSet rs = statement.executeQuery();
 
             ArrayList<T> items = new ArrayList<T>();
             while(rs.next())
                 items.add(mapper.map(rs));
+
+            rs.close();
+            statement.close();
+            con.close();
             return items;
-        } finally {
-            if (rs != null)
-                rs.close();
-            if (statement != null) {
-                statement.close();
-            }
-            if (con != null) {
-                con.close();
-            }
+        } catch(SQLException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
-    public void insert(User user) throws SQLException {
+    public void insert(User user) {
         queryUpdate("INSERT INTO USERS VALUES (?, ?, ?, ?)",
                 user.getUserId(), user.getPassword(), user.getName(), user.getEmail());
     }
 
-    public void update(User user) throws SQLException {
+    public void update(User user) {
         queryUpdate("UPDATE USERS SET userId=?, password=?, name=?, email=? WHERE userId=?",
                 user.getUserId(), user.getPassword(), user.getName(), user.getEmail(), user.getUserId());
     }
 
-    public List<User> findAll() throws SQLException {
+    public List<User> findAll() {
         return queryGet(
                 rs -> new User(rs.getString("userId"), rs.getString("password"), rs.getString("name"), rs.getString("email")),
                 "SELECT * FROM USERS;"
         );
     }
 
-    public User findByUserId(String userId) throws SQLException {
+    public User findByUserId(String userId) {
         List<User> users = queryGet(
                 rs -> new User(rs.getString("userId"), rs.getString("password"), rs.getString("name"), rs.getString("email")),
                 "SELECT userId, password, name, email FROM USERS WHERE userId=?",
